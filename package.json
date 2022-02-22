@@ -2,13 +2,16 @@
   "name": "video-talk",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "serve": "vue-cli-service serve",
+    "dev": "vue-cli-service serve",
     "build": "vue-cli-service build",
-    "lint": "vue-cli-service lint"
+    "lint": "vue-cli-service lint",
+    "server": "node --loader ts-node/esm  ./server/index.ts"
   },
   "dependencies": {
     "core-js": "^3.8.3",
+    "socket.io-client": "^4.4.1",
     "vue": "^3.2.13",
     "vue-router": "^4.0.3"
   },
@@ -22,13 +25,17 @@
     "@vue/cli-service": "~5.0.0",
     "@vue/eslint-config-standard": "^6.1.0",
     "@vue/eslint-config-typescript": "^9.1.0",
+    "cors": "^2.8.5",
     "eslint": "^7.32.0",
     "eslint-plugin-import": "^2.25.3",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^5.1.0",
     "eslint-plugin-vue": "^8.0.3",
+    "express": "^4.17.3",
     "less": "^4.0.0",
     "less-loader": "^8.0.0",
+    "socket.io": "^4.4.1",
+    "ts-node": "^10.2.0",
     "typescript": "~4.5.5"
   }
 }
