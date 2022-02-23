@@ -2,15 +2,15 @@
   "name": "video-talk",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "scripts": {
     "dev": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint",
-    "server": "node --loader ts-node/esm  ./server/index.ts"
+    "server": "node  --experimental-modules --loader ts-node/esm    ./server/index.ts"
   },
   "dependencies": {
     "core-js": "^3.8.3",
+    "nodemon": "^2.0.15",
     "socket.io-client": "^4.4.1",
     "vue": "^3.2.13",
     "vue-router": "^4.0.3"
