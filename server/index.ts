@@ -63,7 +63,7 @@ io.on('connection', (client) => {
     client.leave(roomID)
     const myRoom: any = io.sockets.adapter.rooms.get(roomID)
     // 获取房间人数
-    const users = myRoom ? Object.keys(myRoom.sockets).length : 0
+    const users = myRoom ? Object.keys(myRoom.sockets || {}).length : 0
     console.log('current user count: ', users)
     client.to(roomID).emit('bye', roomID, client.id)
     client.emit('left', roomID, client.id)
