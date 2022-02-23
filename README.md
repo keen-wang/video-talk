@@ -1,6 +1,8 @@
 # video-talk
 
 ## Project setup
+
+node use v14.18.2
 ```
 npm install
 ```
