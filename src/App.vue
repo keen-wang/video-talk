@@ -1,5 +1,4 @@
 <template>
-  <img alt="Vue logo" src="./assets/logo.png" />
   <input v-model="state.roomId" type="text" placeholder="roomId" />
   <button @click="enterRoom" :disabled="state.userState !== 'init'">
     进入房间
@@ -7,10 +6,33 @@
   <button @click="leaveRoom" :disabled="state.userState === 'init'">
     退出房间
   </button>
-  本地视频
-  <video muted :srcObject="state.localStream" controls autoplay playsinline></video>
-  远端视频
-  <video muted :srcObject="state.remoteStream" controls autoplay playsinline></video>
+  <fieldset>
+    <legend>本地视频</legend>
+    <video
+      width="320"
+      height="240"
+      muted
+      :srcObject="state.localStream"
+      controls
+      autoplay
+      playsinline
+    ></video>
+  </fieldset>
+  <fieldset>
+    <legend>远端视频</legend>
+    <span>{{}}</span>
+    <video
+      width="320"
+      height="240"
+      muted
+      :srcObject="state.remoteUser.remoteStream"
+      controls
+      autoplay
+      playsinline
+    ></video
+    >˝
+  </fieldset>
+  <div></div>
 </template>
 
 <script lang="ts">
@@ -32,7 +54,6 @@ export default {
       deviceList: MediaDeviceInfo[];
       localStream?: MediaStream;
       localStreamList: MediaStream[];
-      remoteStream?: MediaStream;
       roomId: string;
       userId: string;
       userState: UserState;
@@ -42,6 +63,10 @@ export default {
         offer: any;
         answer: any;
       };
+      remoteUser: {
+        userId?: number;
+      remoteStream?: MediaStream;
+      }
     } = reactive({
       deviceList: [],
       roomId: 'video',
@@ -51,7 +76,8 @@ export default {
       pcInfo: {
         offer: '',
         answer: ''
-      }
+      },
+      remoteUser: {}
     })
 
     onMounted(async () => {
@@ -80,16 +106,17 @@ export default {
         state.io = socketIO('http://localhost:9966')
       }
       state.io.on('connect', () => {
-        console.log('connect Server')
+        console.warn('connect Server')
       })
       state.io.on('joined', (roomId, id) => {
+        console.warn('joined', roomId, id)
         state.userState = UserState.Joined
         state.userId = id
         createPeerConnection()
         bindTracks()
       })
       state.io.on('other_join', (roomId, id) => {
-        console.log(`user ${id} join in ${roomId}`)
+        console.warn(`user ${id} join in ${roomId}`)
         if (state.userState === UserState.Unbind) {
           createPeerConnection()
           bindTracks()
@@ -168,7 +195,7 @@ export default {
         // 接收远端媒体
         state.peerConnection.ontrack = (e) => {
           debugger
-          state.remoteStream = e.streams[0]
+          state.remoteUser.remoteStream = e.streams[0]
         }
         // 收集候选者
         state.peerConnection.onicecandidate = (e) => {
