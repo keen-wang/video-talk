@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <script>
+        function defineReactive(data, key, value) {
+            // 当不传 value 时表示监听 data[key]，但不修改值。
+            if (arguments.length === 2) {
+                value = data[key]
+            }
+            // 将 object 类型的属性值修改为响应式对象
+            let childOb = observe(value)
+
+            Object.defineProperty(data, key, {
+                enumerable: true,
+                configurable: true,
+                get() {
+                    console.log(`获取 ${key} 属性`)
+                    return value
+                },
+                set(newValue) {
+                    console.log(`修改 ${key} 属性为` + newValue)
+                    if (value === newValue || childOb === newValue) {
+                        return
+                    }
+                    childOb = observe(newValue)
+                }
+            })
+        }
+
+        class Observer {
+            constructor(normalObj) {
+                console.log('普通对象转 Observer', normalObj)
+                def(normalObj, "__ob__", this, false)
+                if (Array.isArray(normalObj)) {
+                    Object.setPrototypeOf(normalObj, newArrayPrototype)
+                    observeArray(normalObj)
+                } else {
+                    this.defineReactiveObj(normalObj)
+                }
+            }
+            /**
+             * 将对象的所有属性设为响应式
+            */
+            defineReactiveObj(value) {
+                console.log('将对象的所有属性设为响应式', value);
+                for (let key in value) {
+                    defineReactive(value, key)
+                }
+            }
+        }
+        /**
+         * 定义一个对象属性值，并可设置是否为可枚举。
+        */
+        function def(obj, key, value, enumerable) {
+            Object.defineProperty(obj, key, {
+                value,
+                enumerable,
+                writable: true,
+                configurable: true
+            })
+        }
+
+        /**
+         * 将一个普通对象转成响应式对象
+        */
+        function observe(value) {
+            if (typeof value !== "object") return;
+            let ob
+            // 响应式的对象处理后用 __ob__ 属性指向自身，标识为响应式对象
+            if (typeof value.__ob__ !== "undefined") {
+                ob = value.__ob__
+            } else {
+                // 
+                ob = new Observer(value)
+            }
+            return ob
+        }
+
+        const funcsNeedOverWrite = [
+            "push",
+            "pop",
+            "shift",
+            "splice",
+            "sort",
+            "reverse"
+        ]
+        const arrayPrototype = Array.prototype
+        const newArrayPrototype = Object.create(arrayPrototype)
+        funcsNeedOverWrite.forEach(funcName => {
+            // 保存原方法
+            const originalFunc = arrayPrototype[funcName]
+            // 定义新方法
+            def(newArrayPrototype, funcName, function () {
+                console.log('新方法',);
+                // 把数组 __ob__ 取出来
+                const ob = this.__ob__
+                // 将三种插入元素的方法新增的元素设为响应式
+                let insertedList = []
+                switch (funcName) {
+                    case "push":
+                    case "unshift":
+                        break;
+                    case "splice":
+                        insertedList = [...arguments].slice(2)
+
+                }
+                if (insertedList) {
+                    observeArray(insertedList)
+                }
+                // 调用原方法
+                const res = originalFunc.apply(this, [...arguments])
+                return res
+            }, false)
+        })
+
+        function observeArray(array) {
+            for (let i = 0; l = array.length, i < l; i++) {
+                observe(array[i])
+            }
+        }
+
+        let obj = {
+            a: [1, 2, {b: 11 }]
+        }
+        observe(obj)
+        // obj.a.push(4)
+        // console.log('obj.a', obj.a);
+        obj.a[2].b = 100
+        console.log('obj.a[2].b', obj.a[2].b);
+    </script>
+</body>
+
+</html>
