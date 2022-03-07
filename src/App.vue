@@ -1,18 +1,19 @@
 <template>
-  <input v-model="state.roomId" type="text" placeholder="roomId" />
-  <button @click="enterRoom" :disabled="state.userState !== 'init'">
+  <input v-model="roomId" type="text" placeholder="roomId" />
+  <button @click="enterRoom" :disabled="userState !== 'init'">
     进入房间
   </button>
-  <button @click="leaveRoom" :disabled="state.userState === 'init'">
+  <button @click="leaveRoom" :disabled="userState === 'init'">
     退出房间
   </button>
   <fieldset>
     <legend>本地视频</legend>
+    <span>status: {{userState}}</span><br/>
     <video
       width="320"
       height="240"
       muted
-      :srcObject="state.localStream"
+      :srcObject="localStream"
       controls
       autoplay
       playsinline
@@ -25,7 +26,7 @@
       width="320"
       height="240"
       muted
-      :srcObject="state.remoteUser.remoteStream"
+      :srcObject="remoteUser.remoteStream"
       controls
       autoplay
       playsinline
@@ -37,7 +38,7 @@
 
 <script lang="ts">
 // import HelloWorld from './components/HelloWorld.vue';
-import { onMounted, reactive } from 'vue'
+import { onMounted, reactive, toRef, toRefs } from 'vue'
 import { io as socketIO, Socket } from 'socket.io-client'
 
 enum UserState {
@@ -73,6 +74,7 @@ export default {
       userId: '',
       userState: UserState.Init,
       localStreamList: [],
+      localStream: undefined,
       pcInfo: {
         offer: '',
         answer: ''
@@ -116,7 +118,7 @@ export default {
         bindTracks()
       })
       state.io.on('other_join', (roomId, id) => {
-        console.warn(`user ${id} join in ${roomId}`)
+        console.warn(`other_join: user ${id} join in ${roomId}`)
         if (state.userState === UserState.Unbind) {
           createPeerConnection()
           bindTracks()
@@ -133,14 +135,14 @@ export default {
       }
       state.io.on('full', (roomId) => {
         leaveRoomHandle(roomId)
-        alert('room is full')
+        alert('full: room is full')
       })
       state.io.on('left', (roomId) => {
         leaveRoomHandle(roomId)
         closeLocalMedia()
       })
       state.io.on('bye', (roomId, id) => {
-        console.log(`user ${id} leaves room ${roomId}`)
+        console.log(`bye: user ${id} leaves room ${roomId}`)
         state.userState = UserState.Unbind
         hangup()
       })
@@ -194,7 +196,6 @@ export default {
         state.peerConnection = new RTCPeerConnection(config)
         // 接收远端媒体
         state.peerConnection.ontrack = (e) => {
-          debugger
           state.remoteUser.remoteStream = e.streams[0]
         }
         // 收集候选者
@@ -221,7 +222,7 @@ export default {
       // 发送本地媒体
       if (state.localStream) {
         state.localStream.getTracks().forEach((track) => {
-          console.log('bindTracks', track)
+          // console.log('bindTracks', track)
           state.peerConnection?.addTrack(track, state.localStream!)
         })
         console.log('bindTracks')
@@ -286,7 +287,7 @@ export default {
       sendMessage(desc)
     }
     return {
-      state,
+      ...toRefs(state),
       enterRoom,
       leaveRoom
     }
