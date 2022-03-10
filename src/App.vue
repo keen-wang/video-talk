@@ -1,14 +1,11 @@
 <template>
   <input v-model="roomId" type="text" placeholder="roomId" />
-  <button @click="enterRoom" :disabled="userState !== 'init'">
-    进入房间
-  </button>
-  <button @click="leaveRoom" :disabled="userState === 'init'">
-    退出房间
-  </button>
+  <button @click="enterRoom" :disabled="userState !== 'init'">进入房间</button>
+  <button @click="leaveRoom" :disabled="userState === 'init'">退出房间</button>
   <fieldset>
     <legend>本地视频</legend>
-    <span>status: {{userState}}</span><br/>
+    <span>status: {{ userState }}</span
+    ><br />
     <video
       width="320"
       height="240"
@@ -30,15 +27,14 @@
       controls
       autoplay
       playsinline
-    ></video
-    >˝
+    ></video>
   </fieldset>
   <div></div>
 </template>
 
 <script lang="ts">
 // import HelloWorld from './components/HelloWorld.vue';
-import { onMounted, reactive, toRef, toRefs } from 'vue'
+import { onMounted, reactive, toRefs } from 'vue'
 import { io as socketIO, Socket } from 'socket.io-client'
 
 enum UserState {
@@ -66,8 +62,8 @@ export default {
       };
       remoteUser: {
         userId?: number;
-      remoteStream?: MediaStream;
-      }
+        remoteStream?: MediaStream;
+      };
     } = reactive({
       deviceList: [],
       roomId: 'video',
@@ -84,7 +80,7 @@ export default {
 
     onMounted(async () => {
       state.deviceList = await navigator?.mediaDevices?.enumerateDevices()
-      console.log('枚举设备', state.deviceList)
+      console.log('mediaDevices', state.deviceList)
     })
     async function captureStream () {
       try {
@@ -115,11 +111,11 @@ export default {
         state.userState = UserState.Joined
         state.userId = id
         createPeerConnection()
-        bindTracks()
       })
       state.io.on('other_join', (roomId, id) => {
         console.warn(`other_join: user ${id} join in ${roomId}`)
         if (state.userState === UserState.Unbind) {
+          debugger
           createPeerConnection()
           bindTracks()
         }
@@ -151,11 +147,17 @@ export default {
         if (data && data.type) {
           if (data.type === 'offer') {
             state.pcInfo.offer = data.sdp
-            state.peerConnection?.setRemoteDescription(
+            await state.peerConnection?.setRemoteDescription(
               new RTCSessionDescription(data)
             )
-            console.log('remote offer', data)
-            const answer = await state.peerConnection?.createAnswer()
+            // bindTracks()
+            debugger
+            console.warn('remote offer: setRemoteDescription', data)
+            const offerOptions = {
+              // offerToReceiveAudio: true,
+              // offerToReceiveVideo: true
+            }
+            const answer = await state.peerConnection?.createAnswer(offerOptions)
             answer && sendAnswer(answer)
           } else if (data.type === 'candidate') {
             const candidate = new RTCIceCandidate({
@@ -164,13 +166,14 @@ export default {
             })
             // 将远端的候选者信息添加到 pc 中
             await state.peerConnection?.addIceCandidate(candidate)
-            console.log('add candidate', data)
+            console.warn('candidate: add candidate', data)
           } else if (data.type === 'answer') {
             state.pcInfo.answer = data.sdp
             await state.peerConnection?.setRemoteDescription(
               new RTCSessionDescription(data)
             )
-            console.log('remote answer', data)
+            // bindTracks()
+            console.warn('answer: setRemoteDescription', data)
           }
         } else {
           console.error('message is invalid!', data)
@@ -179,7 +182,7 @@ export default {
       // 发送登录房间消息
       state.io.emit('join', state.roomId)
     }
-    function createPeerConnection () {
+    async function createPeerConnection () {
       console.log('createPeerConnection')
       const config = {
         // iceServers: [
@@ -196,23 +199,28 @@ export default {
         state.peerConnection = new RTCPeerConnection(config)
         // 接收远端媒体
         state.peerConnection.ontrack = (e) => {
+          debugger
+          console.warn('get remote stream', e.streams[0])
           state.remoteUser.remoteStream = e.streams[0]
         }
+        await bindTracks()
         // 收集候选者
         state.peerConnection.onicecandidate = (e) => {
           if (e.candidate) {
-            sendMessage({
+            const msg = {
               type: 'candidate',
               label: e.candidate.sdpMLineIndex,
               id: e.candidate.sdpMid,
               candidate: e.candidate.candidate
-            })
+            }
+            sendMessage(msg)
+            console.log('send candidate', msg)
           } else {
             console.log('no candidate')
           }
         }
       } else {
-        console.log('PeerConnection has been created')
+        alert('PeerConnection has been created')
       }
     }
     async function bindTracks () {
@@ -221,11 +229,14 @@ export default {
       // const audioTrack = state.localStream?.getAudioTracks()[0]
       // 发送本地媒体
       if (state.localStream) {
-        state.localStream.getTracks().forEach((track) => {
-          // console.log('bindTracks', track)
+        const tracks = state.localStream.getTracks()
+        debugger
+        for (let index = 0; index < tracks.length; index++) {
+          const track = tracks[index]
+
           state.peerConnection?.addTrack(track, state.localStream!)
-        })
-        console.log('bindTracks')
+        }
+        console.log('bindTracks', state.localStream.getTracks())
       }
     }
     function sendMessage (data: any) {
@@ -242,15 +253,17 @@ export default {
       state.peerConnection.close()
       state.peerConnection = undefined
     }
+    /**
+     * 主动发起通话
+     */
     async function call () {
       // 媒体协商
       console.log('call')
       if (state.userState === UserState.Connected) {
         const offerOptions = {
-          offerToReceiveAudio: 1,
-          offerToReceiveVideo: 1
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: true
         }
-        // @ts-ignore
         const offer = await state.peerConnection?.createOffer(offerOptions)
         offer && sendOffer(offer)
       }
@@ -274,14 +287,14 @@ export default {
       }
       state.userState = UserState.Init
     }
-    // @ts-ignore
     function sendAnswer (desc: any) {
+      console.log('setLocalDescription', desc)
       state.peerConnection?.setLocalDescription(desc)
       state.pcInfo.answer = desc.sdp
       sendMessage(desc)
     }
-    // @ts-ignore
     function sendOffer (desc: any) {
+      console.log('setLocalDescription', desc)
       state.peerConnection?.setLocalDescription(desc)
       state.pcInfo.offer = desc.sdp
       sendMessage(desc)
