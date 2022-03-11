@@ -1,6 +1,6 @@
 import express from 'express'
 import http from 'http'
-import { Server as SocketIO, Socket } from 'socket.io'
+import { Server as SocketIO } from 'socket.io'
 import cors from 'cors'
 
 const app = express()
@@ -38,7 +38,7 @@ io.on('connection', (client) => {
   console.log('client connect')
   // 收到 message 进行转发
   client.on('message', (roomID, message) => {
-    console.log('message', roomID, message)
+    // console.log('message', roomID, message)
     client.to(roomID).emit('message', roomID, message)
   })
 
@@ -52,6 +52,8 @@ io.on('connection', (client) => {
       users = myRoom ? myRoom.size : 0
       if (users > 1) {
         client.to(roomID).emit('other_join', roomID, client.id)
+        // console.log('users', myRoom)
+        // client.emit('other_exist', roomID, client.id)
       }
     } else {
       client.emit('full', roomID, client.id)

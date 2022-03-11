@@ -3,9 +3,9 @@
   <button @click="enterRoom" :disabled="userState !== 'init'">进入房间</button>
   <button @click="leaveRoom" :disabled="userState === 'init'">退出房间</button>
   <fieldset>
-    <legend>本地视频</legend>
-    <span>status: {{ userState }}</span
-    ><br />
+    <legend>local stream</legend>
+    <div>status: {{ userState }}</div>
+    <div>user: {{ userId }}</div>
     <video
       width="320"
       height="240"
@@ -17,8 +17,8 @@
     ></video>
   </fieldset>
   <fieldset>
-    <legend>远端视频</legend>
-    <span>{{}}</span>
+    <legend>remote stream</legend>
+    <div>user: {{ remoteUser.userId }}</div>
     <video
       width="320"
       height="240"
@@ -61,7 +61,7 @@ export default {
         answer: any;
       };
       remoteUser: {
-        userId?: number;
+        userId?: string;
         remoteStream?: MediaStream;
       };
     } = reactive({
@@ -82,7 +82,7 @@ export default {
       state.deviceList = await navigator?.mediaDevices?.enumerateDevices()
       console.log('mediaDevices', state.deviceList)
     })
-    async function captureStream () {
+    async function previewStream () {
       try {
         if (!state.localStream) {
           state.localStream = await navigator.mediaDevices.getUserMedia({
@@ -96,10 +96,16 @@ export default {
           state.localStreamList.push(state.localStream)
         }
       } catch (error) {
-        console.error('getUserMedia', error)
+        alert('' + error)
+        throw error
       }
     }
-    function enterRoom () {
+    async function enterRoom () {
+      // Preview the screen of local stream
+      await previewStream()
+      //
+      createPeerConnection()
+      bindTracks()
       if (!state.io) {
         state.io = socketIO('http://localhost:9966')
       }
@@ -110,12 +116,17 @@ export default {
         console.warn('joined', roomId, id)
         state.userState = UserState.Joined
         state.userId = id
-        createPeerConnection()
       })
-      state.io.on('other_join', (roomId, id) => {
+
+      state.io.on('other_exist', async (roomId, id) => {
+        console.warn(`other_join: user ${id} already in ${roomId}`)
+        state.remoteUser.userId = id
+        state.userState = UserState.Connected
+      })
+      state.io.on('other_join', async (roomId, id) => {
         console.warn(`other_join: user ${id} join in ${roomId}`)
+        state.remoteUser.userId = id
         if (state.userState === UserState.Unbind) {
-          debugger
           createPeerConnection()
           bindTracks()
         }
@@ -150,14 +161,15 @@ export default {
             await state.peerConnection?.setRemoteDescription(
               new RTCSessionDescription(data)
             )
-            // bindTracks()
-            debugger
+
             console.warn('remote offer: setRemoteDescription', data)
             const offerOptions = {
               // offerToReceiveAudio: true,
               // offerToReceiveVideo: true
             }
-            const answer = await state.peerConnection?.createAnswer(offerOptions)
+            const answer = await state.peerConnection?.createAnswer(
+              offerOptions
+            )
             answer && sendAnswer(answer)
           } else if (data.type === 'candidate') {
             const candidate = new RTCIceCandidate({
@@ -172,7 +184,6 @@ export default {
             await state.peerConnection?.setRemoteDescription(
               new RTCSessionDescription(data)
             )
-            // bindTracks()
             console.warn('answer: setRemoteDescription', data)
           }
         } else {
@@ -199,11 +210,9 @@ export default {
         state.peerConnection = new RTCPeerConnection(config)
         // 接收远端媒体
         state.peerConnection.ontrack = (e) => {
-          debugger
           console.warn('get remote stream', e.streams[0])
           state.remoteUser.remoteStream = e.streams[0]
         }
-        await bindTracks()
         // 收集候选者
         state.peerConnection.onicecandidate = (e) => {
           if (e.candidate) {
@@ -223,21 +232,23 @@ export default {
         alert('PeerConnection has been created')
       }
     }
-    async function bindTracks () {
-      await captureStream()
-      // const videoTrack = state.localStream?.getVideoTracks()[0]
-      // const audioTrack = state.localStream?.getAudioTracks()[0]
+    function bindTracks () {
       // 发送本地媒体
-      if (state.localStream) {
-        const tracks = state.localStream.getTracks()
-        debugger
-        for (let index = 0; index < tracks.length; index++) {
-          const track = tracks[index]
-
-          state.peerConnection?.addTrack(track, state.localStream!)
-        }
-        console.log('bindTracks', state.localStream.getTracks())
+      if (!state.peerConnection) {
+        alert('Cannot found peerConnection!')
+        return
+      } else if (!state.localStream) {
+        alert('Cannot found localStream!')
+        return
       }
+      const tracks = state.localStream.getTracks()
+
+      for (let index = 0; index < tracks.length; index++) {
+        const track = tracks[index]
+
+        state.peerConnection?.addTrack(track, state.localStream!)
+      }
+      console.log('bindTracks', state.localStream.getTracks())
     }
     function sendMessage (data: any) {
       console.log('sendMessage')
@@ -249,6 +260,7 @@ export default {
       if (!state.peerConnection) {
         return
       }
+      state.remoteUser.userId = undefined
       state.pcInfo.offer = null
       state.peerConnection.close()
       state.peerConnection = undefined
