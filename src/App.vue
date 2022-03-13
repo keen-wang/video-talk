@@ -5,8 +5,10 @@
   <div class="video-wrap">
     <fieldset>
       <legend>local stream</legend>
-      <div>status: {{ userState }}</div>
-      <div>user: {{ userId }}</div>
+      <div class="user-info">
+        <div>status: {{ userState }}</div>
+        <div>user: {{ userId }}</div>
+      </div>
       <video
         width="320"
         height="240"
@@ -19,7 +21,9 @@
     </fieldset>
     <fieldset>
       <legend>remote stream</legend>
-      <div>user: {{ remoteUser.userId }}</div>
+      <div class="user-info">
+        <div>user: {{ remoteUser.userId }}</div>
+      </div>
       <video
         width="320"
         height="240"
@@ -339,6 +343,9 @@ export default {
   > fieldset {
     min-width: 320px;
     flex: 1;
+    .user-info {
+      min-height: 36px;
+    }
   }
 }
 </style>

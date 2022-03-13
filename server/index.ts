@@ -5,6 +5,7 @@ import cors from 'cors'
 import fs from 'fs'
 import https from 'https'
 import path from 'path'
+import os from 'os'
 const privateKey = fs.readFileSync(path.resolve('./server/aaa.key'), 'utf8')
 const certificate = fs.readFileSync(path.resolve('./server/aaa.crt'), 'utf8')
 
@@ -30,11 +31,11 @@ const credentials = { key: privateKey, cert: certificate }
 const server = https.createServer(credentials, app)
 server.listen(9966, () => {
   // @ts-ignore
-  const host = server.address().address
+  const host = getIPV4Address()
   // @ts-ignore
   const port = server.address().port
   console.log(`应用实例，访问地址为 https://${host}:${port}`)
-  console.log('server is running', `wss://${host}:${port}`)
+  // console.log('server is running', `wss://${host}:${port}`)
 })
 const io = new SocketIO(server, {
   cors: {
@@ -81,3 +82,24 @@ io.on('connection', (client) => {
   })
   client.on('disconnect', () => { /* … */ })
 })
+
+/** getIPV4Address */
+function getIPV4Address (): string | null {
+  const interfaces = os.networkInterfaces()
+  for (const devName in interfaces) {
+    //
+    // console.log(devName)
+    const iface = interfaces[devName]
+    if (iface && iface.length) {
+      // console.log(iface)
+      for (let i = 0; i < iface.length; i++) {
+        const alias = iface[i]
+        // console.log(alias)
+        if (alias.family === 'IPv4' && alias.address !== '127.0.0.1' && !alias.internal) {
+          return alias.address
+        }
+      }
+    }
+  }
+  return null
+}
