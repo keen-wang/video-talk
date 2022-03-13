@@ -1,7 +1,12 @@
 import express from 'express'
-import http from 'http'
+// import http from 'http'
 import { Server as SocketIO } from 'socket.io'
 import cors from 'cors'
+import fs from 'fs'
+import https from 'https'
+import path from 'path'
+const privateKey = fs.readFileSync(path.resolve('./server/aaa.key'), 'utf8')
+const certificate = fs.readFileSync(path.resolve('./server/aaa.crt'), 'utf8')
 
 const app = express()
 app.use(cors())
@@ -20,14 +25,16 @@ app.all('*', function (req, res, next) {
 
 const maxUserCount = 2
 
-const server = http.createServer(app)
+// const server = http.createServer(app)
+const credentials = { key: privateKey, cert: certificate }
+const server = https.createServer(credentials, app)
 server.listen(9966, () => {
   // @ts-ignore
   const host = server.address().address
   // @ts-ignore
   const port = server.address().port
-  console.log(`应用实例，访问地址为 http://${host}:${port}`)
-  console.log('server is running', 'ws://localhost:8866')
+  console.log(`应用实例，访问地址为 https://${host}:${port}`)
+  console.log('server is running', `wss://${host}:${port}`)
 })
 const io = new SocketIO(server, {
   cors: {

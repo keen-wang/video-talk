@@ -1,42 +1,42 @@
 <template>
   <input v-model="roomId" type="text" placeholder="roomId" />
-  <button @click="enterRoom" :disabled="userState !== 'init'">进入房间</button>
-  <button @click="leaveRoom" :disabled="userState === 'init'">退出房间</button>
-  <fieldset>
-    <legend>local stream</legend>
-    <div>status: {{ userState }}</div>
-    <div>user: {{ userId }}</div>
-    <video
-      width="320"
-      height="240"
-      muted
-      :srcObject="localStream"
-      controls
-      autoplay
-      playsinline
-    ></video>
-  </fieldset>
-  <fieldset>
-    <legend>remote stream</legend>
-    <div>user: {{ remoteUser.userId }}</div>
-    <video
-      width="320"
-      height="240"
-      muted
-      :srcObject="remoteUser.remoteStream"
-      controls
-      autoplay
-      playsinline
-    ></video>
-  </fieldset>
-  <div></div>
+  <button @click="enterRoom" :disabled="userState !== 'init'">Join</button>
+  <button @click="leaveRoom" :disabled="userState === 'init'">Leave</button>
+  <div class="video-wrap">
+    <fieldset>
+      <legend>local stream</legend>
+      <div>status: {{ userState }}</div>
+      <div>user: {{ userId }}</div>
+      <video
+        width="320"
+        height="240"
+        muted
+        :srcObject="localStream"
+        controls
+        autoplay
+        playsinline
+      ></video>
+    </fieldset>
+    <fieldset>
+      <legend>remote stream</legend>
+      <div>user: {{ remoteUser.userId }}</div>
+      <video
+        width="320"
+        height="240"
+        :srcObject="remoteUser.remoteStream"
+        controls
+        autoplay
+        playsinline
+      ></video>
+    </fieldset>
+  </div>
 </template>
 
 <script lang="ts">
 // import HelloWorld from './components/HelloWorld.vue';
 import { onMounted, reactive, toRefs } from 'vue'
 import { io as socketIO, Socket } from 'socket.io-client'
-
+import 'default-passive-events'
 enum UserState {
   Init = 'init',
   Joined = 'joined',
@@ -86,11 +86,12 @@ export default {
       try {
         if (!state.localStream) {
           state.localStream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              width: 640,
-              height: 480,
-              frameRate: 15
-            },
+            // video: {
+            //   width: 900,
+            //   height: 600,
+            //   frameRate: 30
+            // },
+            video: true,
             audio: true
           })
           state.localStreamList.push(state.localStream)
@@ -107,7 +108,8 @@ export default {
       createPeerConnection()
       bindTracks()
       if (!state.io) {
-        state.io = socketIO('http://localhost:9966')
+        const url = process.env.VUE_APP_SERVER
+        state.io = socketIO(url)
       }
       state.io.on('connect', () => {
         console.warn('connect Server')
@@ -320,7 +322,7 @@ export default {
 }
 </script>
 
-<style>
+<style lang="less">
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -328,5 +330,15 @@ export default {
   text-align: center;
   color: #2c3e50;
   margin-top: 60px;
+}
+.video-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  > fieldset {
+    min-width: 320px;
+    flex: 1;
+  }
 }
 </style>
