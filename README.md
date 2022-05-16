@@ -29,7 +29,7 @@ npm run server
 ```
 运行完命令得到 https 服务的 ipv4 地址
 ![npm run server](doc_images/img1.png)
-
+注：这时先在浏览器打开这个地址访问，选择信任该地址，避免前端页面不能与服务地址建立 websocket。
 ### 4. 运行前端页面
 
 1. 设置信令服务地址    
